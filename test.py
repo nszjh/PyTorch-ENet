@@ -40,7 +40,7 @@ class Test:
             # Get the inputs and labels
             inputs = batch_data[0].to(self.device)
             labels = batch_data[1].to(self.device)
-
+            print (step)
             with torch.no_grad():
                 # Forward propagation
                 outputs = self.model(inputs)
@@ -50,7 +50,7 @@ class Test:
 
             # Keep track of loss for current epoch
             epoch_loss += loss.item()
-
+            
             # Keep track of evaluation the metric
             self.metric.add(outputs.detach(), labels.detach())
 

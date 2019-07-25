@@ -2,6 +2,7 @@
 
 - CamVid
 - CityScapes
+- icome
 
 Note: When referring to the number of classes, the void/unlabeled class is excluded.
 

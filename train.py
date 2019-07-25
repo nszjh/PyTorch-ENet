@@ -40,16 +40,24 @@ class Train:
             inputs = batch_data[0].to(self.device)
             labels = batch_data[1].to(self.device)
 
+            # print (step)
             # Forward propagation
             outputs = self.model(inputs)
 
+            # print (inputs.size())
+            # print (labels.size())
+            # print (outputs.size())
             # Loss computation
             loss = self.criterion(outputs, labels)
+
+            # print (loss)
 
             # Backpropagation
             self.optim.zero_grad()
             loss.backward()
             self.optim.step()
+
+
 
             # Keep track of loss for current epoch
             epoch_loss += loss.item()

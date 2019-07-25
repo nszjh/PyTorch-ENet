@@ -66,6 +66,21 @@ def pil_loader(data_path, label_path):
     return data, label
 
 
+def pil_loader2(data_path):
+    """Loads a sample and label image given their path as PIL images.
+
+    Keyword arguments:
+    - data_path (``string``): The filepath to the image.
+    - label_path (``string``): The filepath to the ground-truth image.
+
+    Returns the image and the label as PIL images.
+
+    """
+    data = Image.open(data_path)
+
+    return data
+
+
 def remap(image, old_values, new_values):
     assert isinstance(image, Image.Image) or isinstance(
         image, np.ndarray), "image must be of type PIL.Image or numpy.ndarray"
@@ -122,6 +137,7 @@ def enet_weighing(dataloader, num_classes, c=1.02):
         class_count += np.bincount(flat_label, minlength=num_classes)
         total += flat_label.size
 
+    print (class_count, total)
     # Compute propensity score and then the weights for each class
     propensity_score = class_count / total
     class_weights = 1 / (np.log(c + propensity_score))
@@ -173,3 +189,35 @@ def median_freq_balancing(dataloader, num_classes):
     med = np.median(freq)
 
     return med / freq
+
+
+
+def fliterLabel(image):
+
+    threshold = 128
+ 
+    table = []
+    for i in range(256):
+        if i < threshold:
+            table.append(0)
+        else:
+            table.append(1)
+    
+    photo = image.point(table, 'L')
+
+    return photo
+
+def fliterLabeltoBinary(image, isTurn):
+
+    threshold = 200
+ 
+    table = []
+    for i in range(256):
+        if i < threshold:
+            table.append(0) if isTurn > 0 else table.append(1)
+        else:
+            table.append(1) if isTurn > 0 else table.append(0)
+    
+    photo = image.point(table, '1')
+
+    return photo

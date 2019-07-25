@@ -1,10 +1,10 @@
 import torch
 import numpy as np
-from metric import metric
-from metric.confusionmatrix import ConfusionMatrix
+from metric import Metric
+from confusionmatrix import ConfusionMatrix
 
 
-class IoU(metric.Metric):
+class IoU(Metric):
     """Computes the intersection over union (IoU) per class and corresponding
     mean (mIoU).
 
@@ -23,7 +23,7 @@ class IoU(metric.Metric):
     """
 
     def __init__(self, num_classes, normalized=False, ignore_index=None):
-        super().__init__()
+        super(IoU, self).__init__()
         self.conf_metric = ConfusionMatrix(num_classes, normalized)
 
         if ignore_index is None:
@@ -59,6 +59,8 @@ class IoU(metric.Metric):
         assert target.dim() == 3 or target.dim() == 4, \
             "targets must be of dimension (N, H, W) or (N, K, H, W)"
 
+        # print(predicted)
+        # print(target)
         # If the tensor is in categorical format convert it to integer format
         if predicted.dim() == 4:
             _, predicted = predicted.max(1)
@@ -78,6 +80,9 @@ class IoU(metric.Metric):
             is the mean IoU.
         """
         conf_matrix = self.conf_metric.value()
+        
+        # print (conf_matrix)
+
         if self.ignore_index is not None:
             for index in self.ignore_index:
                 conf_matrix[:, self.ignore_index] = 0
@@ -87,7 +92,9 @@ class IoU(metric.Metric):
         false_negative = np.sum(conf_matrix, 1) - true_positive
 
         # Just in case we get a division by 0, ignore/hide the error
+
         with np.errstate(divide='ignore', invalid='ignore'):
-            iou = true_positive / (true_positive + false_positive + false_negative)
+            # print ((true_positive + false_positive + false_negative))
+            iou = true_positive / ((true_positive + false_positive + false_negative).astype(float))
 
         return iou, np.nanmean(iou)

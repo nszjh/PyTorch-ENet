@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from metric import metric
+from metric import Metric
 
 
-class ConfusionMatrix(metric.Metric):
+class ConfusionMatrix(Metric):
     """Constructs a confusion matrix for a multi-class classification problems.
 
     Does not support multi-label, multi-class problems.
@@ -17,7 +17,7 @@ class ConfusionMatrix(metric.Metric):
     """
 
     def __init__(self, num_classes, normalized=False):
-        super().__init__()
+        super(ConfusionMatrix, self).__init__()
 
         self.conf = np.ndarray((num_classes, num_classes), dtype=np.int32)
         self.normalized = normalized
@@ -78,6 +78,7 @@ class ConfusionMatrix(metric.Metric):
         assert bincount_2d.size == self.num_classes**2
         conf = bincount_2d.reshape((self.num_classes, self.num_classes))
 
+        # print (conf)
         self.conf += conf
 
     def value(self):
@@ -87,6 +88,7 @@ class ConfusionMatrix(metric.Metric):
             to ground-truth targets and columns corresponds to predicted
             targets.
         """
+
         if self.normalized:
             conf = self.conf.astype(np.float32)
             return conf / conf.sum(1).clip(min=1e-12)[:, None]

@@ -8,6 +8,8 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 
 from PIL import Image
+from PIL import ImageFilter
+
 
 import transforms as ext_transforms
 from models.enet import ENet
@@ -15,8 +17,10 @@ from train import Train
 from test import Test
 from metric.iou import IoU
 from args import get_arguments
-from data.utils import enet_weighing, median_freq_balancing
+from data.utils import enet_weighing, median_freq_balancing, fliterLabel, fliterLabeltoBinary
 import utils
+
+import cv2
 
 # Get the arguments
 args = get_arguments()
@@ -76,6 +80,19 @@ def load_dataset(dataset):
         shuffle=False,
         num_workers=args.workers)
 
+
+    # Load the renamed test set as tensors
+    renamed_test_set = dataset(
+        args.dataset_dir,
+        mode='renamedTest',
+        transform=image_transform,
+        label_transform=label_transform)
+    renamed_test_loader = data.DataLoader(
+        renamed_test_set,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers)
+
     # Get encoding between pixel valus in label images and RGB colors
     class_encoding = train_set.color_encoding
 
@@ -115,13 +132,17 @@ def load_dataset(dataset):
     print("\nWeighing technique:", args.weighing)
     print("Computing class weights...")
     print("(this can take a while depending on the dataset size)")
+    print (num_classes)
     class_weights = 0
+    import numpy as np
+
     if args.weighing.lower() == 'enet':
         class_weights = enet_weighing(train_loader, num_classes)
     elif args.weighing.lower() == 'mfb':
         class_weights = median_freq_balancing(train_loader, num_classes)
     else:
-        class_weights = None
+        class_weights = np.array([50.4983, 50.4983])  
+
 
     if class_weights is not None:
         class_weights = torch.from_numpy(class_weights).float().to(device)
@@ -133,23 +154,25 @@ def load_dataset(dataset):
     print("Class weights:", class_weights)
 
     return (train_loader, val_loader,
-            test_loader), class_weights, class_encoding
+            test_loader, renamed_test_loader), class_weights, class_encoding
 
 
 def train(train_loader, val_loader, class_weights, class_encoding):
     print("\nTraining...\n")
 
     num_classes = len(class_encoding)
-
+    
     # Intialize ENet
     model = ENet(num_classes).to(device)
     # Check if the network architecture is correct
-    print(model)
+    # print(model)
 
     # We are going to use the CrossEntropyLoss loss function as it's most
     # frequentely used in classification problems with multiple classes which
     # fits the problem. This criterion  combines LogSoftMax and NLLLoss.
+    # criterion = nn.CrossEntropyLoss(weight=class_weights)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
+
 
     # ENet authors used Adam as the optimizer
     optimizer = optim.Adam(
@@ -232,18 +255,18 @@ def test(model, test_loader, class_weights, class_encoding):
     metric = IoU(num_classes, ignore_index=ignore_index)
 
     # Test the trained model on the test set
-    test = Test(model, test_loader, criterion, metric, device)
+    # test = Test(model, test_loader, criterion, metric, device)
 
-    print(">>>> Running test dataset")
+    # print(">>>> Running test dataset")
 
-    loss, (iou, miou) = test.run_epoch(args.print_step)
-    class_iou = dict(zip(class_encoding.keys(), iou))
+    # loss, (iou, miou) = test.run_epoch(args.print_step)
+    # class_iou = dict(zip(class_encoding.keys(), iou))
 
-    print(">>>> Avg. loss: {0:.4f} | Mean IoU: {1:.4f}".format(loss, miou))
+    # print(">>>> Avg. loss: {0:.4f} | Mean IoU: {1:.4f}".format(loss, miou))
 
     # Print per class IoU
-    for key, class_iou in zip(class_encoding.keys(), iou):
-        print("{0}: {1:.4f}".format(key, class_iou))
+    # for key, class_iou in zip(class_encoding.keys(), iou):
+    #     print("{0}: {1:.4f}".format(key, class_iou))
 
     # Show a batch of samples and labels
     if args.imshow_batch:
@@ -263,17 +286,88 @@ def predict(model, images, class_encoding):
     # Predictions is one-hot encoded with "num_classes" channels.
     # Convert it to a single int using the indices where the maximum (1) occurs
     _, predictions = torch.max(predictions.data, 1)
+    print (predictions.size())
+    print (images.size())
+
+
+    # print (image_pil.size)
 
     label_to_rgb = transforms.Compose([
         ext_transforms.LongTensorToRGBPIL(class_encoding),
         transforms.ToTensor()
     ])
     color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
+    # color_predictions.convert('1')
+    
+
+    label_to_pil = transforms.Compose([
+        ext_transforms.LongTensorToRGBPIL(class_encoding)
+    ])
+    color_predictions_pil = [label_to_pil(tensor) for tensor in torch.unbind(predictions.cpu())]
+    color_images_pil = [transforms.ToPILImage()(tensor) for tensor in torch.unbind(images.cpu())]
+
+    import numpy as np
+    # print (len(color_predictions_pil))
+    count = 0
+    print (type(images))
+    for (pil, img) in zip(color_predictions_pil, color_images_pil):
+        # pil = pil.convert('L')
+        # pil = pil.convert('1')
+        # pil = pil.convert('L')
+        # pil  = pil.filter(ImageFilter.GaussianBlur)
+        pil_cv = ext_transforms.RGBPILToCvMat(pil)
+        kernel = np.ones((11,11), np.uint8)
+        # pil_open  = cv2.morphologyEx(pil_cv, cv2.MORPH_OPEN, kernel)
+        _, pil_open = cv2.threshold(pil_cv,200, 255, cv2.THRESH_BINARY)
+        pil_open = cv2.blur(pil_open, (11, 11))
+
+        img_cv = ext_transforms.RGBPILToCvMat(img)
+        img_filter = cv2.GaussianBlur(img_cv, (5, 5), 0)
+        img_filter = cv2.GaussianBlur(img_filter, (5, 5), 0)
+        ########## plan 1 #############
+        # for row in range(pil_cv.shape[0]):
+        #     for col in range(pil_cv.shape[1]):
+        #         for chan in range(pil_cv.shape[2]):
+        #             img_filter[row][col][chan] = float(img_filter[row][col][chan]) * float(pil_open[row][col][chan]) / 255 +  float(img_cv[row][col][chan]) * float(255 - pil_open[row][col][chan]) / 255 
+        # img_out = ext_transforms.CvMatToRGBPIL(img_filter)
+
+
+        ########## plan 2 #############
+        img_filter_np = np.asarray(img_filter).astype(np.float32)
+        img_cv_np = np.asarray(img_cv).astype(np.float32)
+        pil_open_np = np.asarray(pil_open)
+        img_filter2 = img_filter_np * pil_open_np / 255 + img_cv_np * (255 - pil_open_np) / 255
+        img_out = Image.fromarray(cv2.cvtColor(img_filter2.astype(np.uint8), cv2.COLOR_BGR2RGB))
+        
+        img.save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count + 300) + '.png')
+        img_out.save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count + 400) + '.png')
+        Image.fromarray(cv2.cvtColor(pil_open.astype(np.uint8), cv2.COLOR_BGR2RGB)).save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count + 500) + '.png')
+
+
+        ########## plan 3 #############
+        # img_inv = img.copy()
+        # img.paste(pil, fliterLabeltoBinary(pil.convert('L'), 1))
+        # # img_inv.paste(pil, fliterLabeltoBinary(pil.convert('L'), 0))
+        # img_inv = img_inv.filter(ImageFilter.GaussianBlur)
+        # # img_inv = img_inv.filter(ImageFilter.BLUR)
+        # img_inv = img_inv.filter(ImageFilter.GaussianBlur)
+
+        
+        # img.save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count) + '.png')
+        # img_inv.save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count + 100) + '.png')
+        # # img.convert('RGBA')
+        # # img_inv.convert('RGBA')
+        # img_inv.paste(img, fliterLabeltoBinary(pil.convert('L'), 0))
+        # img_inv.save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count + 200) + '.png')
+        # (fliterLabeltoBinary(pil.convert('L'))).save('/media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/icome/icome_test_images/' + str(count + 100) + '.png')
+        count = count + 1
+
     utils.imshow_batch(images.data.cpu(), color_predictions)
 
 
 # Run only if this module is being run directly
 if __name__ == '__main__':
+
 
     # Fail fast if the dataset directory doesn't exist
     assert os.path.isdir(
@@ -290,13 +384,15 @@ if __name__ == '__main__':
         from data import CamVid as dataset
     elif args.dataset.lower() == 'cityscapes':
         from data import Cityscapes as dataset
+    elif args.dataset.lower() == 'icome':
+        from data import Icome as dataset
     else:
         # Should never happen...but just in case it does
         raise RuntimeError("\"{0}\" is not a supported dataset.".format(
             args.dataset))
 
     loaders, w_class, class_encoding = load_dataset(dataset)
-    train_loader, val_loader, test_loader = loaders
+    train_loader, val_loader, test_loader, renamed_test_loader = loaders
 
     if args.mode.lower() in {'train', 'full'}:
         model = train(train_loader, val_loader, w_class, class_encoding)
@@ -316,6 +412,23 @@ if __name__ == '__main__':
                                       args.name)[0]
         print(model)
         test(model, test_loader, w_class, class_encoding)
+
+    elif args.mode.lower() == 'renamed':
+        num_classes = len(class_encoding)
+        model = ENet(num_classes).to(device)
+
+        # Initialize a optimizer just so we can retrieve the model from the
+        # checkpoint
+        optimizer = optim.Adam(model.parameters())
+
+        # Load the previoulsy saved model state to the ENet model
+        model = utils.load_checkpoint(model, optimizer, args.save_dir,
+                                      args.name)[0]
+
+        print ("renamed")
+        for step, batch_data in enumerate(renamed_test_loader):
+            predict(model, batch_data[0], class_encoding)
+
     else:
         # Should never happen...but just in case it does
         raise RuntimeError(

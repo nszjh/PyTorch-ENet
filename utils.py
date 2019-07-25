@@ -1,6 +1,7 @@
 import torch
 import torchvision
 import numpy as np
+
 import matplotlib.pyplot as plt
 import os
 
@@ -115,6 +116,7 @@ def load_checkpoint(model, optimizer, folder_dir, filename):
         model_path), "The model file \"{0}\" doesn't exist.".format(filename)
 
     # Load the stored model parameters to the model instance
+    print (model_path)
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint['state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer'])
@@ -122,3 +124,4 @@ def load_checkpoint(model, optimizer, folder_dir, filename):
     miou = checkpoint['miou']
 
     return model, optimizer, epoch, miou
+

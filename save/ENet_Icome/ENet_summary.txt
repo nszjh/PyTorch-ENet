@@ -1,0 +1,25 @@
+ARGUMENTS
+batch_size: 10
+dataset: icome
+dataset_dir: /media/nv/7174c323-375e-4334-b15e-019bd2c8af08/PyTorch-ENet-master/
+device: cuda
+epochs: 300
+height: 640
+ignore_unlabeled: False
+imshow_batch: True
+learning_rate: 0.0005
+lr_decay: 0.1
+lr_decay_epochs: 100
+mode: train
+name: ENet
+print_step: False
+resume: False
+save_dir: save/ENet_Icome
+weighing: none
+weight_decay: 0.0002
+width: 480
+workers: 4
+
+BEST VALIDATION
+Epoch: 60
+Mean IoU: 0.937949034991

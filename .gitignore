@@ -111,3 +111,8 @@ venv.bak/
 # VSCode
 .vscode/
 *.code-workspace
+
+icome
+CamVid
+cityscapes.tar*
+dataset

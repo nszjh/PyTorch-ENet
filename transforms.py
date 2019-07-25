@@ -4,6 +4,9 @@ from PIL import Image
 from collections import OrderedDict
 from torchvision.transforms import ToPILImage
 
+import cv2
+
+
 
 class PILToLongTensor(object):
     """Converts a ``PIL Image`` to a ``torch.LongTensor``.
@@ -92,3 +95,10 @@ class LongTensorToRGBPIL(object):
                 color_tensor[channel].masked_fill_(mask, color_value)
 
         return ToPILImage()(color_tensor)
+
+
+def CvMatToRGBPIL(image):
+    return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+
+def RGBPILToCvMat(image):
+    return cv2.cvtColor(np.asarray(image),cv2.COLOR_RGB2BGR)

@@ -33,7 +33,7 @@ class InitialBlock(nn.Module):
                  padding=0,
                  bias=False,
                  relu=True):
-        super().__init__()
+        super(InitialBlock, self).__init__()
 
         if relu:
             activation = nn.ReLU()
@@ -121,7 +121,7 @@ class RegularBottleneck(nn.Module):
                  dropout_prob=0,
                  bias=False,
                  relu=True):
-        super().__init__()
+        super(RegularBottleneck, self).__init__()
 
         # Check in the internal_scale parameter is within the expected range
         # [1, channels]
@@ -266,7 +266,7 @@ class DownsamplingBottleneck(nn.Module):
                  dropout_prob=0,
                  bias=False,
                  relu=True):
-        super().__init__()
+        super(DownsamplingBottleneck, self).__init__()
 
         # Store parameters that are needed later
         self.return_indices = return_indices
@@ -409,7 +409,7 @@ class UpsamplingBottleneck(nn.Module):
                  dropout_prob=0,
                  bias=False,
                  relu=True):
-        super().__init__()
+        super(UpsamplingBottleneck, self).__init__()
 
         # Check in the internal_scale parameter is within the expected range
         # [1, channels]
@@ -497,7 +497,7 @@ class ENet(nn.Module):
     """
 
     def __init__(self, num_classes, encoder_relu=False, decoder_relu=True):
-        super().__init__()
+        super(ENet, self).__init__()
 
         self.initial_block = InitialBlock(3, 16, padding=1, relu=encoder_relu)
 

@@ -11,7 +11,7 @@ def get_arguments():
     parser.add_argument(
         "--mode",
         "-m",
-        choices=['train', 'test', 'full'],
+        choices=['train', 'test', 'full', 'renamed'],
         default='train',
         help=("train: performs training and validation; test: tests the model "
               "found in \"--save_dir\" with name \"--name\" on \"--dataset\"; "
@@ -61,7 +61,7 @@ def get_arguments():
     # Dataset
     parser.add_argument(
         "--dataset",
-        choices=['camvid', 'cityscapes'],
+        choices=['camvid', 'cityscapes', 'icome'],
         default='camvid',
         help="Dataset to use. Default: camvid")
     parser.add_argument(
